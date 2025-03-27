@@ -160,18 +160,55 @@ async function fetchEmails(token) {
 
 // Process emails to identify subscriptions
 async function processEmails(messages, token) {
-  const subscriptions = [];
+  const subscriptionMap = new Map(); // Map to store unique subscriptions by sender
   
   for (const message of messages) {
     const email = await fetchEmailDetails(message.id, token);
     const subscription = analyzeEmail(email);
     
     if (subscription) {
-      subscriptions.push(subscription);
+      const senderKey = getSenderKey(subscription.from);
+      
+      // If we already have a subscription from this sender, update it
+      if (subscriptionMap.has(senderKey)) {
+        const existing = subscriptionMap.get(senderKey);
+        // Keep the most recent email and accumulate related emails
+        if (new Date(subscription.date) > new Date(existing.date)) {
+          existing.subject = subscription.subject;
+          existing.date = subscription.date;
+          existing.unsubscribeLink = subscription.unsubscribeLink || existing.unsubscribeLink;
+        }
+        existing.relatedEmails = existing.relatedEmails || [];
+        existing.relatedEmails.push({
+          id: subscription.id,
+          subject: subscription.subject,
+          date: subscription.date
+        });
+      } else {
+        // New unique subscription
+        subscriptionMap.set(senderKey, {
+          ...subscription,
+          senderKey,
+          relatedEmails: [{
+            id: subscription.id,
+            subject: subscription.subject,
+            date: subscription.date
+          }]
+        });
+      }
     }
   }
   
-  return subscriptions;
+  return Array.from(subscriptionMap.values());
+}
+
+// Helper function to normalize sender email for grouping
+function getSenderKey(from) {
+  // Extract email from "Name <email@domain.com>" format
+  const emailMatch = from.match(/<(.+?)>/) || [null, from];
+  const email = emailMatch[1].toLowerCase();
+  // Remove any subaddress (e.g., +tag in email+tag@domain.com)
+  return email.replace(/\+[^@]+@/, '@');
 }
 
 // Fetch detailed email content
@@ -197,6 +234,7 @@ function analyzeEmail(email) {
   const headers = email.payload.headers;
   const subject = headers.find(h => h.name === 'Subject')?.value || '';
   const from = headers.find(h => h.name === 'From')?.value || '';
+  const date = headers.find(h => h.name === 'Date')?.value;
   
   // Extract unsubscribe link
   const body = decodeEmailBody(email);
@@ -212,7 +250,7 @@ function analyzeEmail(email) {
       from,
       category,
       unsubscribeLink,
-      date: headers.find(h => h.name === 'Date')?.value
+      date
     };
   }
   
@@ -264,17 +302,20 @@ function determineCategory(subject, from, body) {
 }
 
 // Unsubscribe from selected emails
-async function unsubscribeFromEmails(emailIds) {
+async function unsubscribeFromEmails(emailData) {
   try {
-    const token = await getAuthToken();
+    console.log('Starting unsubscribe process for:', emailData);
     
-    for (const id of emailIds) {
-      const email = await fetchEmailDetails(id, token);
-      const unsubscribeLink = extractUnsubscribeLink(decodeEmailBody(email));
-      
+    // Open each unsubscribe link in a new tab
+    for (const { id, unsubscribeLink } of emailData) {
       if (unsubscribeLink) {
-        // Open unsubscribe link in new tab
-        chrome.tabs.create({ url: unsubscribeLink });
+        console.log(`Opening unsubscribe link for email ${id}:`, unsubscribeLink);
+        await chrome.tabs.create({ url: unsubscribeLink });
+        
+        // Update storage to remove the unsubscribed item
+        const { subscriptions } = await chrome.storage.local.get('subscriptions');
+        const updatedSubscriptions = subscriptions.filter(sub => sub.id !== id);
+        await chrome.storage.local.set({ subscriptions: updatedSubscriptions });
       }
     }
     

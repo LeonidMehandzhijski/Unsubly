@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Subscription Manager",
+  "name": "Unsubify",
   "version": "1.0",
-  "description": "Scan your emails for subscriptions and manage them in one place",
+  "description": "Easily manage and unsubscribe from email subscriptions in your Gmail inbox",
   "permissions": [
     "identity",
     "identity.email",

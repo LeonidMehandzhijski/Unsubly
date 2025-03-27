@@ -1,31 +1,31 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Subscription Manager</title>
+  <title>Unsubify</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>Subscription Manager</h1>
-      <button id="scanButton" class="btn-primary">Scan Emails</button>
+      <h1>Unsubify</h1>
+      <button id="scanButton">Scan Emails</button>
     </header>
-
+    
     <div class="stats">
-      <div class="stat-card">
-        <h3>Total Subscriptions</h3>
-        <p id="totalCount">0</p>
+      <div class="stat-item">
+        <span class="stat-label">Unique Subscriptions</span>
+        <span class="stat-value" id="totalCount">0</span>
       </div>
-      <div class="stat-card">
-        <h3>Newsletters</h3>
-        <p id="newsletterCount">0</p>
+      <div class="stat-item">
+        <span class="stat-label">Newsletters</span>
+        <span class="stat-value" id="newsletterCount">0</span>
       </div>
-      <div class="stat-card">
-        <h3>Social Media</h3>
-        <p id="socialCount">0</p>
+      <div class="stat-item">
+        <span class="stat-label">Social Media</span>
+        <span class="stat-value" id="socialCount">0</span>
       </div>
     </div>
-
+    
     <div class="filters">
       <select id="categoryFilter">
         <option value="all">All Categories</option>
@@ -36,14 +36,14 @@
       </select>
       <input type="text" id="searchInput" placeholder="Search subscriptions...">
     </div>
-
-    <div class="subscription-list" id="subscriptionList">
-      <!-- Subscriptions will be populated here -->
+    
+    <div id="subscriptionList" class="subscription-list">
+      <div class="loading">Click "Scan Emails" to start</div>
     </div>
-
-    <div class="actions">
-      <button id="unsubscribeSelected" class="btn-secondary">Unsubscribe Selected</button>
-    </div>
+    
+    <footer>
+      <button id="unsubscribeSelected">Unsubscribe Selected</button>
+    </footer>
   </div>
   <script src="popup.js"></script>
 </body>
