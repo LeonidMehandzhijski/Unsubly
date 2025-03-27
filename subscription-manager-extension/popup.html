@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Subscription Manager</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Subscription Manager</h1>
+      <button id="scanButton" class="btn-primary">Scan Emails</button>
+    </header>
+
+    <div class="stats">
+      <div class="stat-card">
+        <h3>Total Subscriptions</h3>
+        <p id="totalCount">0</p>
+      </div>
+      <div class="stat-card">
+        <h3>Newsletters</h3>
+        <p id="newsletterCount">0</p>
+      </div>
+      <div class="stat-card">
+        <h3>Social Media</h3>
+        <p id="socialCount">0</p>
+      </div>
+    </div>
+
+    <div class="filters">
+      <select id="categoryFilter">
+        <option value="all">All Categories</option>
+        <option value="newsletter">Newsletters</option>
+        <option value="social">Social Media</option>
+        <option value="service">Services</option>
+        <option value="other">Other</option>
+      </select>
+      <input type="text" id="searchInput" placeholder="Search subscriptions...">
+    </div>
+
+    <div class="subscription-list" id="subscriptionList">
+      <!-- Subscriptions will be populated here -->
+    </div>
+
+    <div class="actions">
+      <button id="unsubscribeSelected" class="btn-secondary">Unsubscribe Selected</button>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html> 

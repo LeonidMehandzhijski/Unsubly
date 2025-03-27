@@ -1,0 +1,11 @@
+{
+  "name": "subscription-manager-extension",
+  "version": "1.0.0",
+  "description": "Chrome extension to manage email subscriptions",
+  "scripts": {
+    "generate-icons": "node generate-icons.js"
+  },
+  "dependencies": {
+    "sharp": "^0.32.1"
+  }
+} 
