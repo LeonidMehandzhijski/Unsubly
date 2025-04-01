@@ -273,15 +273,38 @@ function decodeEmailBody(email) {
 // Extract unsubscribe link from email body
 function extractUnsubscribeLink(body) {
   const unsubscribePatterns = [
+    // Direct unsubscribe links
     /unsubscribe\s*link:\s*(https?:\/\/[^\s<>"]+)/i,
     /click\s*here\s*to\s*unsubscribe:\s*(https?:\/\/[^\s<>"]+)/i,
-    /<a[^>]*href=["'](https?:\/\/[^"']*unsubscribe[^"']*)["'][^>]*>/i
+    /<a[^>]*href=["'](https?:\/\/[^"']*unsubscribe[^"']*)["'][^>]*>/i,
+    
+    // Common unsubscribe patterns
+    /<a[^>]*href=["'](https?:\/\/[^"']*preferences[^"']*)["'][^>]*>/i,
+    /<a[^>]*href=["'](https?:\/\/[^"']*email-preferences[^"']*)["'][^>]*>/i,
+    /<a[^>]*href=["'](https?:\/\/[^"']*manage-subscription[^"']*)["'][^>]*>/i,
+    /<a[^>]*href=["'](https?:\/\/[^"']*subscription-preferences[^"']*)["'][^>]*>/i,
+    
+    // Text-based patterns
+    /(?:unsubscribe|opt-out|manage preferences|email preferences)[^:]*:\s*(https?:\/\/[^\s<>"]+)/i,
+    /(?:unsubscribe|opt-out|manage preferences|email preferences)[^:]*\s+(https?:\/\/[^\s<>"]+)/i,
+    
+    // List-unsubscribe header pattern
+    /<mailto:unsubscribe@[^>]+>/i,
+    
+    // Generic link patterns
+    /<a[^>]*href=["'](https?:\/\/[^"']*pref[^"']*)["'][^>]*>/i,
+    /<a[^>]*href=["'](https?:\/\/[^"']*manage[^"']*)["'][^>]*>/i
   ];
   
   for (const pattern of unsubscribePatterns) {
     const match = body.match(pattern);
     if (match) {
-      return match[1];
+      // Clean up the URL if it's a mailto link
+      let url = match[1];
+      if (url.startsWith('mailto:')) {
+        url = url.replace('mailto:', '');
+      }
+      return url;
     }
   }
   
