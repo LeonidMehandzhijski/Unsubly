@@ -1,13 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Unsubly",
-  "version": "1.0",
+  "version": "1.0.1",
   "description": "Easily manage and unsubscribe from email subscriptions in your Gmail inbox",
   "permissions": [
     "identity",
     "identity.email",
-    "storage",
-    "tabs"
+    "storage"
   ],
   "host_permissions": [
     "https://mail.google.com/*",

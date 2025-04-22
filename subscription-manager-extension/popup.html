@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <title>Unsubly</title>
   <link rel="stylesheet" href="popup.css">
 </head>
@@ -8,20 +9,23 @@
   <div class="container">
     <header>
       <h1>Unsubly</h1>
-      <button id="scanButton">Scan Emails</button>
+      <div class="scan-info">
+        <button id="scanButton">Scan Emails</button>
+        <span id="lastScan" class="last-scan"></span>
+      </div>
     </header>
     
     <div class="stats">
       <div class="stat-item">
-        <span class="stat-label">Unique Subscriptions</span>
+        <span class="stat-label">Unique<br>Subscriptions</span>
         <span class="stat-value" id="totalCount">0</span>
       </div>
       <div class="stat-item">
-        <span class="stat-label">Newsletters</span>
+        <span class="stat-label">Email<br>Newsletters</span>
         <span class="stat-value" id="newsletterCount">0</span>
       </div>
       <div class="stat-item">
-        <span class="stat-label">Social Media</span>
+        <span class="stat-label">Social<br>Media</span>
         <span class="stat-value" id="socialCount">0</span>
       </div>
     </div>

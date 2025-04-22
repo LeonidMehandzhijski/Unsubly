@@ -1,11 +1,33 @@
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('Popup initialized');
+  
   const scanButton = document.getElementById('scanButton');
   const categoryFilter = document.getElementById('categoryFilter');
   const searchInput = document.getElementById('searchInput');
   const subscriptionList = document.getElementById('subscriptionList');
   const unsubscribeButton = document.getElementById('unsubscribeSelected');
+  const lastScanElement = document.getElementById('lastScan');
   
-  // Load existing subscriptions
+  // Add progress bar HTML
+  const progressContainer = document.createElement('div');
+  progressContainer.className = 'progress-container';
+  progressContainer.innerHTML = `
+    <div class="progress-bar">
+      <div class="progress-fill"></div>
+    </div>
+    <div class="progress-text">Scanning emails...</div>
+  `;
+  subscriptionList.parentNode.insertBefore(progressContainer, subscriptionList);
+  
+  console.log('Elements found:', {
+    scanButton: !!scanButton,
+    categoryFilter: !!categoryFilter,
+    searchInput: !!searchInput,
+    subscriptionList: !!subscriptionList,
+    unsubscribeButton: !!unsubscribeButton
+  });
+  
+  // Load existing subscriptions and update last scan time
   loadSubscriptions();
   
   // Event listeners
@@ -14,33 +36,65 @@ document.addEventListener('DOMContentLoaded', () => {
   searchInput.addEventListener('input', filterSubscriptions);
   unsubscribeButton.addEventListener('click', handleUnsubscribe);
   
-  // Handle scan button click
-  async function handleScan() {
-    try {
-      scanButton.disabled = true;
-      scanButton.textContent = 'Scanning...';
-      subscriptionList.innerHTML = '<div class="loading">Scanning your emails...</div>';
-      
-      const response = await chrome.runtime.sendMessage({ action: 'scanEmails' });
-      
-      if (response.success) {
-        await loadSubscriptions();
-      } else {
-        showError('Failed to scan emails: ' + response.error);
-      }
-    } catch (error) {
-      showError('Error: ' + error.message);
-    } finally {
-      scanButton.disabled = false;
-      scanButton.textContent = 'Scan Emails';
+  // Listen for progress updates
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.action === 'scanProgress') {
+      updateProgress(message.data);
+    }
+  });
+  
+  // Load subscriptions and update UI
+  async function loadSubscriptions() {
+    const { subscriptions, lastScan } = await chrome.storage.local.get(['subscriptions', 'lastScan']);
+    displaySubscriptions(subscriptions || []);
+    updateStats(subscriptions || []);
+    updateLastScanTime(lastScan);
+  }
+  
+  // Update progress bar
+  function updateProgress(data) {
+    const { processed, total, percentage } = data;
+    progressContainer.classList.add('active');
+    const progressFill = progressContainer.querySelector('.progress-fill');
+    const progressText = progressContainer.querySelector('.progress-text');
+    
+    progressFill.style.width = `${percentage}%`;
+    progressText.textContent = `Scanning emails... ${processed}/${total} (${percentage}%)`;
+    
+    if (processed === total) {
+      setTimeout(() => {
+        progressContainer.classList.remove('active');
+      }, 1000);
     }
   }
   
-  // Load subscriptions from storage
-  async function loadSubscriptions() {
-    const { subscriptions } = await chrome.storage.local.get('subscriptions');
-    displaySubscriptions(subscriptions || []);
-    updateStats(subscriptions || []);
+  // Format and display last scan time
+  function updateLastScanTime(lastScan) {
+    if (!lastScan) {
+      lastScanElement.textContent = 'Never scanned';
+      return;
+    }
+    
+    const date = new Date(lastScan);
+    const now = new Date();
+    const diff = now - date;
+    
+    // Format relative time
+    let timeAgo;
+    if (diff < 60000) { // less than 1 minute
+      timeAgo = 'Just now';
+    } else if (diff < 3600000) { // less than 1 hour
+      const minutes = Math.floor(diff / 60000);
+      timeAgo = `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+    } else if (diff < 86400000) { // less than 1 day
+      const hours = Math.floor(diff / 3600000);
+      timeAgo = `${hours} hour${hours === 1 ? '' : 's'} ago`;
+    } else {
+      const days = Math.floor(diff / 86400000);
+      timeAgo = `${days} day${days === 1 ? '' : 's'} ago`;
+    }
+    
+    lastScanElement.textContent = `Last scan: ${timeAgo}`;
   }
   
   // Display subscriptions in the list
@@ -122,13 +176,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectedItems = Array.from(subscriptionList.querySelectorAll('.subscription-checkbox:checked'))
       .map(checkbox => checkbox.closest('.subscription-item'));
     
+    console.log('Selected items:', selectedItems);
+    
     if (selectedItems.length === 0) {
       showError('Please select subscriptions to unsubscribe from');
       return;
     }
     
-    const itemsWithLinks = selectedItems.filter(item => item.dataset.unsubscribeLink);
-    const itemsWithoutLinks = selectedItems.filter(item => !item.dataset.unsubscribeLink);
+    // Log the dataset of each selected item
+    selectedItems.forEach(item => {
+      console.log('Item dataset:', {
+        id: item.dataset.id,
+        unsubscribeLink: item.dataset.unsubscribeLink
+      });
+    });
+    
+    const itemsWithLinks = selectedItems.filter(item => item.dataset.unsubscribeLink && item.dataset.unsubscribeLink.trim() !== '');
+    const itemsWithoutLinks = selectedItems.filter(item => !item.dataset.unsubscribeLink || item.dataset.unsubscribeLink.trim() === '');
+    
+    console.log('Items with links:', itemsWithLinks);
+    console.log('Items without links:', itemsWithoutLinks);
     
     if (itemsWithoutLinks.length > 0) {
       showError(`Could not find unsubscribe links for ${itemsWithoutLinks.length} selected items`);
@@ -151,11 +218,26 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       
       if (response.success) {
+        // Open unsubscribe links in new windows
+        response.emailData.forEach(({ unsubscribeLink }) => {
+          if (unsubscribeLink) {
+            window.open(unsubscribeLink, '_blank');
+          }
+        });
+        
         // Remove unsubscribed items from the list
         itemsWithLinks.forEach(item => item.remove());
+        
         // Update stats
         const remainingCount = subscriptionList.querySelectorAll('.subscription-item').length;
         document.getElementById('totalCount').textContent = remainingCount;
+        
+        // Update storage
+        const { subscriptions } = await chrome.storage.local.get('subscriptions');
+        const updatedSubscriptions = subscriptions.filter(sub => 
+          !itemsWithLinks.some(item => item.dataset.id === sub.id)
+        );
+        await chrome.storage.local.set({ subscriptions: updatedSubscriptions });
       } else {
         showError('Failed to unsubscribe: ' + response.error);
       }
@@ -188,5 +270,29 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
+  }
+  
+  // Handle scan button click
+  async function handleScan() {
+    try {
+      scanButton.disabled = true;
+      scanButton.textContent = 'Scanning...';
+      subscriptionList.innerHTML = '<div class="loading">Scanning your emails...</div>';
+      progressContainer.classList.add('active');
+      
+      const response = await chrome.runtime.sendMessage({ action: 'scanEmails' });
+      
+      if (response.success) {
+        await loadSubscriptions();
+      } else {
+        showError('Failed to scan emails: ' + response.error);
+      }
+    } catch (error) {
+      showError('Error: ' + error.message);
+    } finally {
+      scanButton.disabled = false;
+      scanButton.textContent = 'Scan Emails';
+      progressContainer.classList.remove('active');
+    }
   }
 }); 
